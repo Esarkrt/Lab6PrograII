@@ -18,7 +18,7 @@ public class VentanaConsola extends JFrame implements Salida {
 
     private final Interprete interprete;
 
-    // Historial de comandos (flechas arriba/abajo)
+    
     private final List<String> history = new ArrayList<>();
     private int historyPos = 0;
 
@@ -37,9 +37,9 @@ public class VentanaConsola extends JFrame implements Salida {
         setMinimumSize(new Dimension(700, 450));
         setLocationRelativeTo(null);
 
-        Font fuente = new Font("Consolas", Font.PLAIN, 15);
+        Font fuente = new Font("Consolas", Font.PLAIN, 17);
         if (!fuente.getFamily().equals("Consolas")) {
-            fuente = new Font(Font.MONOSPACED, Font.PLAIN, 15);
+            fuente = new Font(Font.MONOSPACED, Font.PLAIN, 17);
         }
 
         output.setEditable(false);
