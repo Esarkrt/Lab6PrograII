@@ -1,5 +1,4 @@
 package Consola;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -10,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+
 public class Interprete {
 
     private static final String ROOT_NAME = "ConsolaSimulada";
@@ -18,6 +18,7 @@ public class Interprete {
     private final File root;
     private File current;
 
+    
     private boolean writeMode = false;
     private File writeTarget;
     private boolean writeAppend;
@@ -38,9 +39,7 @@ public class Interprete {
     }
 
     public String getPrompt() {
-        if (writeMode) {
-            return ">";
-        }
+        if (writeMode) return ">";
         return Utilidades.rutaMostrada(root, current) + ">";
     }
 
@@ -50,6 +49,7 @@ public class Interprete {
         salida.println("");
     }
 
+    
     public void procesar(String linea) {
         if (writeMode) {
             procesarLineaEscritura(linea);
@@ -61,6 +61,60 @@ public class Interprete {
             }
         }
     }
+
+   
+    private String nombreDe(String arg, String uso) throws ComandoException {
+        String nombre = Utilidades.quitarComillas(arg);
+        if (nombre.isEmpty()) {
+            throw new ComandoException("La sintaxis del comando no es correcta. Uso: " + uso);
+        }
+        if (!Utilidades.nombreValido(nombre)) {
+            throw new ComandoException("Nombre no valido: " + nombre);
+        }
+        return nombre;
+    }
+
+    
+    private File existente(String nombre) throws ComandoException {
+        File f = new File(current, nombre);
+        if (!f.exists()) {
+            throw new ComandoException("No se encuentra '" + nombre + "' en la carpeta actual.");
+        }
+        return f;
+    }
+
+    
+    private File libre(String nombre) throws ComandoException {
+        File f = new File(current, nombre);
+        if (f.exists()) {
+            throw new ComandoException("Ya existe un archivo o carpeta con el nombre '" + nombre + "'.");
+        }
+        return f;
+    }
+
+    private File archivoExistente(String nombre) throws ComandoException {
+        File f = existente(nombre);
+        if (!f.isFile()) {
+            throw new ComandoException("'" + nombre + "' no es un archivo.");
+        }
+        return f;
+    }
+
+    
+    private List<String> dosArgumentos(String arg, String uso) throws ComandoException {
+        List<String> t = Utilidades.tokenizar(arg);
+        if (t.size() != 2) {
+            throw new ComandoException("La sintaxis del comando no es correcta. Uso: " + uso);
+        }
+        for (String s : t) {
+            if (!Utilidades.nombreValido(s)) {
+                throw new ComandoException("Nombre no valido: " + s);
+            }
+        }
+        return t;
+    }
+
+   
 
     private void ejecutar(String linea) {
         String cmd;
@@ -80,142 +134,71 @@ public class Interprete {
             resto = linea.substring(idx).trim();
         }
 
-        switch (cmd) {
-            case "Mkdir":
-                cmdMkdir(resto);
-                break;
-            case "Mfile":
-                cmdMfile(resto);
-                break;
-            case "Rm":
-                cmdRm(resto);
-                break;
-            case "Cd":
-                cmdCd(resto);
-                break;
-            case "..":
-                irAtras();
-                break;
-            case "Dir":
-                cmdDir();
-                break;
-            case "Date":
-                salida.println("La fecha actual es: " + new SimpleDateFormat("dd/MM/yyyy").format(new Date()));
-                break;
-            case "Time":
-                salida.println("La hora actual es: " + new SimpleDateFormat("HH:mm:ss").format(new Date()));
-                break;
-            case "Wr":
-                cmdEscribir(resto, false);
-                break;
-            case "Ap":
-                cmdEscribir(resto, true);
-                break;
-            case "Rd":
-                cmdRd(resto);
-                break;
-            case "Ren":
-                cmdRen(resto);
-                break;
-            case "Copy":
-                cmdCopy(resto);
-                break;
-            case "Find":
-                cmdFind(resto);
-                break;
-            case "Info":
-                cmdInfo(resto);
-                break;
-            case "Tree":
-                cmdTree();
-                break;
-            case "Cls":
-                salida.limpiar();
-                return;
-            case "Help":
-                cmdHelp();
-                break;
-            case "Exit":
-                salida.cerrar();
-                return;
-            default:
-                salida.println("'" + cmd + "' no se reconoce como un comando interno o externo,");
-                salida.println("programa o archivo por lotes ejecutable.");
+        try {
+            switch (cmd) {
+                case "Mkdir": cmdMkdir(resto); break;
+                case "Mfile": cmdMfile(resto); break;
+                case "Rm":    cmdRm(resto); break;
+                case "Cd":    cmdCd(resto); break;
+                case "..":    irAtras(); break;
+                case "Dir":   cmdDir(); break;
+                case "Date":  salida.println("La fecha actual es: " + new SimpleDateFormat("dd/MM/yyyy").format(new Date())); break;
+                case "Time":  salida.println("La hora actual es: " + new SimpleDateFormat("HH:mm:ss").format(new Date())); break;
+                case "Wr":    cmdEscribir(resto, false); break;
+                case "Ap":    cmdEscribir(resto, true); break;
+                case "Rd":    cmdRd(resto); break;
+                case "Ren":   cmdRen(resto); break;
+                case "Copy":  cmdCopy(resto); break;
+                case "Find":  cmdFind(resto); break;
+                case "Info":  cmdInfo(resto); break;
+                case "Tree":  cmdTree(); break;
+                case "Cls":   salida.limpiar(); return;
+                case "Help":  cmdHelp(); break;
+                case "Exit":  salida.cerrar(); return;
+                default:
+                    throw new ComandoException("'" + cmd + "' no se reconoce como un comando interno o externo,\n"
+                            + "programa o archivo por lotes ejecutable.");
+            }
+        } catch (ComandoException e) {
+            salida.println(e.getMessage());
         }
         salida.println("");
     }
 
-    private void cmdMkdir(String arg) {
-        String nombre = Utilidades.quitarComillas(arg);
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Mkdir <nombre>");
-            return;
+    // ===================== COMANDOS =====================
+
+    private void cmdMkdir(String arg) throws ComandoException {
+        String nombre = nombreDe(arg, "Mkdir <nombre>");
+        File f = libre(nombre);
+        if (!f.mkdir()) {
+            throw new ComandoException("No se pudo crear la carpeta '" + nombre + "'.");
         }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
-        File f = new File(current, nombre);
-        if (f.exists()) {
-            salida.println("Ya existe un archivo o carpeta con el nombre '" + nombre + "'.");
-            return;
-        }
-        if (f.mkdir()) {
-            salida.println("Carpeta creada: " + nombre);
-        } else {
-            salida.println("No se pudo crear la carpeta '" + nombre + "'.");
-        }
+        salida.println("Carpeta creada: " + nombre);
     }
 
-    private void cmdMfile(String arg) {
-        String nombre = Utilidades.quitarComillas(arg);
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Mfile <nombre.ext>");
-            return;
-        }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
-        File f = new File(current, nombre);
-        if (f.exists()) {
-            salida.println("Ya existe un archivo o carpeta con el nombre '" + nombre + "'.");
-            return;
-        }
+    private void cmdMfile(String arg) throws ComandoException {
+        String nombre = nombreDe(arg, "Mfile <nombre.ext>");
+        File f = libre(nombre);
         try {
-            if (f.createNewFile()) {
-                salida.println("Archivo creado: " + nombre);
-            } else {
-                salida.println("No se pudo crear el archivo '" + nombre + "'.");
+            if (!f.createNewFile()) {
+                throw new ComandoException("No se pudo crear el archivo '" + nombre + "'.");
             }
         } catch (IOException e) {
-            salida.println("Error al crear el archivo: " + e.getMessage());
+            throw new ComandoException("Error al crear el archivo: " + e.getMessage());
         }
+        salida.println("Archivo creado: " + nombre);
     }
 
-    private void cmdRm(String arg) {
-        String nombre = Utilidades.quitarComillas(arg);
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Rm <nombre>");
-            return;
+    private void cmdRm(String arg) throws ComandoException {
+        String nombre = nombreDe(arg, "Rm <nombre>");
+        File f = existente(nombre);
+        if (!Utilidades.borrarRecursivo(f)) {
+            throw new ComandoException("No se pudo eliminar '" + nombre + "' por completo.");
         }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
-        File f = new File(current, nombre);
-        if (!f.exists()) {
-            salida.println("No se encuentra '" + nombre + "' en la carpeta actual.");
-            return;
-        }
-        if (Utilidades.borrarRecursivo(f)) {
-            salida.println("Eliminado: " + nombre);
-        } else {
-            salida.println("No se pudo eliminar '" + nombre + "' por completo.");
-        }
+        salida.println("Eliminado: " + nombre);
     }
 
-    private void cmdCd(String arg) {
+    private void cmdCd(String arg) throws ComandoException {
         String nombre = Utilidades.quitarComillas(arg);
         if (nombre.isEmpty()) {
             salida.println(Utilidades.rutaMostrada(root, current));
@@ -225,31 +208,21 @@ public class Interprete {
             irAtras();
             return;
         }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
+        nombre = nombreDe(nombre, "Cd <carpeta>");
         File f = new File(current, nombre);
         if (!f.exists()) {
-            salida.println("El sistema no puede encontrar la ruta especificada: " + nombre);
-            return;
+            throw new ComandoException("El sistema no puede encontrar la ruta especificada: " + nombre);
         }
         if (!f.isDirectory()) {
-            salida.println("'" + nombre + "' no es una carpeta.");
-            return;
+            throw new ComandoException("'" + nombre + "' no es una carpeta.");
         }
         current = Utilidades.canon(f);
     }
 
-    private void irAtras() {
-        if (Utilidades.canon(current).equals(root)) {
-            salida.println("Ya se encuentra en la carpeta raiz.");
-            return;
-        }
+    private void irAtras() throws ComandoException {
         File padre = current.getParentFile();
-        if (padre == null) {
-            salida.println("Ya se encuentra en la carpeta raiz.");
-            return;
+        if (Utilidades.canon(current).equals(root) || padre == null) {
+            throw new ComandoException("Ya se encuentra en la carpeta raiz.");
         }
         current = Utilidades.canon(padre);
     }
@@ -275,25 +248,15 @@ public class Interprete {
         salida.println(String.format("%15d carpeta(s)", carpetas));
     }
 
-    private void cmdEscribir(String arg, boolean append) {
-        String nombre = Utilidades.quitarComillas(arg);
-        String sintaxis = append ? "Ap" : "Wr";
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: " + sintaxis + " <archivo.ext>");
-            return;
-        }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
+    // ---- Wr / Ap ----
+    private void cmdEscribir(String arg, boolean append) throws ComandoException {
+        String nombre = nombreDe(arg, (append ? "Ap" : "Wr") + " <archivo.ext>");
         File f = new File(current, nombre);
         if (f.isDirectory()) {
-            salida.println("'" + nombre + "' es una carpeta, no un archivo.");
-            return;
+            throw new ComandoException("'" + nombre + "' es una carpeta, no un archivo.");
         }
         if (append && !f.exists()) {
-            salida.println("No se encuentra el archivo '" + nombre + "'.");
-            return;
+            throw new ComandoException("No se encuentra el archivo '" + nombre + "'.");
         }
 
         writeMode = true;
@@ -308,13 +271,13 @@ public class Interprete {
         salida.println(linea);
         if (linea.equals("EXIT")) {
             writeMode = false;
-            try (BufferedWriter bw = new BufferedWriter(new FileWriter(writeTarget, writeAppend))) {
-                bw.write(writeBuffer.toString());
+            try {
+                guardarBuffer();
                 salida.println(writeAppend
                         ? "Texto agregado correctamente a " + writeTarget.getName() + "."
                         : "Archivo guardado correctamente: " + writeTarget.getName() + ".");
-            } catch (IOException e) {
-                salida.println("Error al escribir en el archivo: " + e.getMessage());
+            } catch (ComandoException e) {
+                salida.println(e.getMessage());
             }
             salida.println("");
             writeBuffer = null;
@@ -324,25 +287,17 @@ public class Interprete {
         }
     }
 
-    private void cmdRd(String arg) {
-        String nombre = Utilidades.quitarComillas(arg);
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Rd <archivo.ext>");
-            return;
+    private void guardarBuffer() throws ComandoException {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(writeTarget, writeAppend))) {
+            bw.write(writeBuffer.toString());
+        } catch (IOException e) {
+            throw new ComandoException("Error al escribir en el archivo: " + e.getMessage());
         }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
-        File f = new File(current, nombre);
-        if (!f.exists()) {
-            salida.println("No se encuentra el archivo '" + nombre + "'.");
-            return;
-        }
-        if (!f.isFile()) {
-            salida.println("'" + nombre + "' no es un archivo.");
-            return;
-        }
+    }
+
+    private void cmdRd(String arg) throws ComandoException {
+        String nombre = nombreDe(arg, "Rd <archivo.ext>");
+        File f = archivoExistente(nombre);
         try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String l;
             boolean vacio = true;
@@ -350,92 +305,51 @@ public class Interprete {
                 salida.println(l);
                 vacio = false;
             }
-            if (vacio) {
-                salida.println("(el archivo esta vacio)");
-            }
+            if (vacio) salida.println("(el archivo esta vacio)");
         } catch (IOException e) {
-            salida.println("Error al leer el archivo: " + e.getMessage());
+            throw new ComandoException("Error al leer el archivo: " + e.getMessage());
         }
     }
 
-    private void cmdRen(String arg) {
-        List<String> t = Utilidades.tokenizar(arg);
-        if (t.size() != 2) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Ren <actual> <nuevo>");
-            return;
-        }
+    private void cmdRen(String arg) throws ComandoException {
+        List<String> t = dosArgumentos(arg, "Ren <actual> <nuevo>");
         String actual = t.get(0), nuevo = t.get(1);
-        if (!Utilidades.nombreValido(actual) || !Utilidades.nombreValido(nuevo)) {
-            salida.println("Nombre no valido.");
-            return;
+        File f = existente(actual);
+        File n = libre(nuevo);
+        if (!f.renameTo(n)) {
+            throw new ComandoException("No se pudo renombrar '" + actual + "'.");
         }
-        File f = new File(current, actual);
-        File n = new File(current, nuevo);
-        if (!f.exists()) {
-            salida.println("No se encuentra '" + actual + "'.");
-            return;
-        }
-        if (n.exists()) {
-            salida.println("Ya existe un archivo o carpeta con el nombre '" + nuevo + "'.");
-            return;
-        }
-        if (f.renameTo(n)) {
-            salida.println("'" + actual + "' renombrado a '" + nuevo + "'.");
-        } else {
-            salida.println("No se pudo renombrar '" + actual + "'.");
-        }
+        salida.println("'" + actual + "' renombrado a '" + nuevo + "'.");
     }
 
-    private void cmdCopy(String arg) {
-        List<String> t = Utilidades.tokenizar(arg);
-        if (t.size() != 2) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Copy <origen> <destino>");
-            return;
-        }
+    private void cmdCopy(String arg) throws ComandoException {
+        List<String> t = dosArgumentos(arg, "Copy <origen> <destino>");
         String origen = t.get(0), destino = t.get(1);
-        if (!Utilidades.nombreValido(origen) || !Utilidades.nombreValido(destino)) {
-            salida.println("Nombre no valido.");
-            return;
-        }
-        File o = new File(current, origen);
-        File d = new File(current, destino);
-        if (!o.exists()) {
-            salida.println("No se encuentra el archivo '" + origen + "'.");
-            return;
-        }
-        if (!o.isFile()) {
-            salida.println("'" + origen + "' no es un archivo (Copy solo copia archivos).");
-            return;
-        }
-        if (d.exists()) {
-            salida.println("Ya existe un archivo o carpeta con el nombre '" + destino + "'.");
-            return;
-        }
+        File o = archivoExistente(origen);
+        File d = libre(destino);
         try (FileReader fr = new FileReader(o); FileWriter fw = new FileWriter(d)) {
             char[] buffer = new char[4096];
             int n;
             while ((n = fr.read(buffer)) != -1) {
                 fw.write(buffer, 0, n);
             }
-            salida.println("Se copio '" + origen + "' a '" + destino + "'. 1 archivo(s) copiado(s).");
         } catch (IOException e) {
-            salida.println("Error al copiar: " + e.getMessage());
+            throw new ComandoException("Error al copiar: " + e.getMessage());
         }
+        salida.println("Se copio '" + origen + "' a '" + destino + "'. 1 archivo(s) copiado(s).");
     }
 
-    private void cmdFind(String arg) {
+    private void cmdFind(String arg) throws ComandoException {
         String texto = Utilidades.quitarComillas(arg);
         if (texto.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Find <nombre>");
-            return;
+            throw new ComandoException("La sintaxis del comando no es correcta. Uso: Find <nombre>");
         }
         int[] cont = {0};
         buscar(current, texto.toLowerCase(), "", cont);
         if (cont[0] == 0) {
-            salida.println("No se encontraron archivos ni carpetas que contengan '" + texto + "'.");
-        } else {
-            salida.println(cont[0] + " resultado(s) encontrado(s).");
+            throw new ComandoException("No se encontraron archivos ni carpetas que contengan '" + texto + "'.");
         }
+        salida.println(cont[0] + " resultado(s) encontrado(s).");
     }
 
     private void buscar(File dir, String texto, String relativo, int[] cont) {
@@ -445,27 +359,13 @@ public class Interprete {
                 salida.println((f.isDirectory() ? "[DIR]  " : "[FILE] ") + rel);
                 cont[0]++;
             }
-            if (f.isDirectory()) {
-                buscar(f, texto, rel, cont);
-            }
+            if (f.isDirectory()) buscar(f, texto, rel, cont);
         }
     }
 
-    private void cmdInfo(String arg) {
-        String nombre = Utilidades.quitarComillas(arg);
-        if (nombre.isEmpty()) {
-            salida.println("La sintaxis del comando no es correcta. Uso: Info <nombre>");
-            return;
-        }
-        if (!Utilidades.nombreValido(nombre)) {
-            salida.println("Nombre no valido: " + nombre);
-            return;
-        }
-        File f = new File(current, nombre);
-        if (!f.exists()) {
-            salida.println("No se encuentra '" + nombre + "'.");
-            return;
-        }
+    private void cmdInfo(String arg) throws ComandoException {
+        String nombre = nombreDe(arg, "Info <nombre>");
+        File f = existente(nombre);
         salida.println("Nombre:                " + f.getName());
         salida.println("Tipo:                  " + (f.isDirectory() ? "Carpeta" : "Archivo"));
         salida.println("Ruta:                  " + Utilidades.rutaMostrada(root, f));
@@ -516,5 +416,4 @@ public class Interprete {
         salida.println("");
         salida.println("Nota: use comillas para nombres con espacios, por ejemplo: Mkdir \"Mi carpeta\"");
     }
-
 }
